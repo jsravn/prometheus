@@ -229,7 +229,8 @@ func (h *Head) processWALSamples(
 
 // ReadWAL initializes the head by consuming the write ahead log.
 func (h *Head) ReadWAL() error {
-	defer h.postings.EnsureOrder()
+	// TODO: (dab) sort out why this is causing gopherjs grief:
+	// defer h.postings.EnsureOrder()
 
 	r := h.wal.Reader()
 	mint := h.MinTime()
@@ -314,11 +315,13 @@ func (h *Head) ReadWAL() error {
 	wg.Wait()
 
 	if err != nil {
+		h.postings.EnsureOrder()
 		return errors.Wrap(err, "consume WAL")
 	}
 	if unknownRefs > 0 {
 		level.Warn(h.logger).Log("msg", "unknown series references in WAL samples", "count", unknownRefs)
 	}
+	h.postings.EnsureOrder()
 	return nil
 }
 
