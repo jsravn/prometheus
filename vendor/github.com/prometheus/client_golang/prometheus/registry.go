@@ -17,7 +17,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"os"
 	"sort"
 	"sync"
 
@@ -49,8 +48,8 @@ var (
 )
 
 func init() {
-	MustRegister(NewProcessCollector(os.Getpid(), ""))
-	MustRegister(NewGoCollector())
+	//MustRegister(NewProcessCollector(os.Getpid(), ""))
+	//MustRegister(NewGoCollector())
 }
 
 // NewRegistry creates a new vanilla Registry without any Collectors
