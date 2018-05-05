@@ -6,11 +6,10 @@ var minusOne = -1
 // A file is just a slice of bytes
 // A reference also tracks the position within the file
 
-// START OMIT
-
 type (
 	virtualFile struct {
-		data []byte
+		data  []byte
+		isDir int
 	}
 	virtualFileReference struct {
 		file *virtualFile
@@ -20,15 +19,16 @@ type (
 		files  map[string]*virtualFile
 		fds    map[uintptr]*virtualFileReference
 		nextFD uintptr
+		BREAKS int
 	}
 )
 
 func newVirtualFileSystem() *virtualFileSystem {
-	return &virtualFileSystem{
+	vfs := virtualFileSystem{
 		files:  make(map[string]*virtualFile),
 		fds:    make(map[uintptr]*virtualFileReference),
 		nextFD: 1000,
 	}
+	vfs.initDir("/", "/tmp")
+	return &vfs
 }
-
-// END OMIT

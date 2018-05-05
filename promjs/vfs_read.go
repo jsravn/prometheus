@@ -15,7 +15,7 @@ func (vfs *virtualFileSystem) Read(a1, a2, a3 uintptr) (r1, r2 uintptr, err sysc
 	buf := a2
 	cnt := int(a3)
 
-	js.Global.Get("console").Call("log", "::READ", fd, buf, cnt) // OMIT
+	js.Global.Get("console").Call("debug", "::READ", fd, buf, cnt) // OMIT
 
 	// find our file descriptor
 	ref, ok := vfs.fds[fd]

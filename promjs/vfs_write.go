@@ -6,8 +6,6 @@ import (
 	"github.com/gopherjs/gopherjs/js"
 )
 
-// START OMIT
-
 // Write a file: http://man7.org/linux/man-pages/man2/write.2.html
 //
 //       ssize_t write(int fd, const void *buf, size_t count);
@@ -16,15 +14,15 @@ func (vfs *virtualFileSystem) Write(a1, a2, a3 uintptr) (r1, r2 uintptr, err sys
 	fd := a1
 	buf := uint8ArrayToBytes(a2)
 	cnt := a3
-	// OMIT
-	js.Global.Get("console").Call("log", "::WRITE", fd, buf) // OMIT
-	// OMIT
-	// write to stdout/stdin    OMIT
-	switch fd { // OMIT
-	case uintptr(syscall.Stdout), uintptr(syscall.Stderr): // OMIT
-		js.Global.Get("document").Call("write", "<pre>"+string(buf)+"</pre>") // OMIT
-		return cnt, 0, 0                                                      // OMIT
-	} // OMIT
+
+	js.Global.Get("console").Call("debug", "::WRITE", fd, buf)
+
+	// write to stdout/stdin
+	switch fd {
+	case uintptr(syscall.Stdout), uintptr(syscall.Stderr):
+		js.Global.Get("console").Call("log", string(buf))
+		return cnt, 0, 0
+	}
 
 	// find our file descriptor
 	ref, ok := vfs.fds[fd]
@@ -33,10 +31,8 @@ func (vfs *virtualFileSystem) Write(a1, a2, a3 uintptr) (r1, r2 uintptr, err sys
 	}
 
 	// append to the file data and move the cursor
-	ref.file.data = append(ref.file.data[ref.pos:], buf...)
+	ref.file.data = append(ref.file.data[:ref.pos], buf...)
 	ref.pos += len(buf)
 
 	return cnt, 0, 0
 }
-
-// END OMIT

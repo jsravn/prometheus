@@ -13,7 +13,7 @@ import (
 func (vfs *virtualFileSystem) Close(a1, a2, a3 uintptr) (r1, r2 uintptr, err syscall.Errno) {
 	fd := a1
 
-	js.Global.Get("console").Call("log", "::CLOSE", fd)
+	js.Global.Get("console").Call("debug", "::CLOSE", fd)
 
 	// See if the file descriptor exists. If it doesn't, return an error
 	_, ok := vfs.fds[fd]

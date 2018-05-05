@@ -16,7 +16,7 @@ func (vfs *virtualFileSystem) Open(a1, a2, a3 uintptr) (r1, r2 uintptr, err sysc
 	flags := int(a2)
 	mode := os.FileMode(a3)
 
-	js.Global.Get("console").Call("log", "::OPEN", pathname, flags, os.FileMode(mode).String()) // OMIT
+	js.Global.Get("console").Call("debug", "::OPEN", pathname, flags, os.FileMode(mode).String())
 
 	// See if the file exists, if it doesn't, and we passed O_CREATE, create it
 	file, ok := vfs.files[pathname]

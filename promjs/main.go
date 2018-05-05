@@ -1,26 +1,77 @@
 package main
 
 import (
-	"io"
+	"context"
 	"io/ioutil"
 	"os"
+	"time"
+
+	"github.com/gopherjs/gopherjs/js"
+
+	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/pkg/labels"
+	"github.com/prometheus/prometheus/promql"
+	"github.com/prometheus/prometheus/storage"
+	"github.com/prometheus/prometheus/storage/tsdb"
 )
 
-// START OMIT
-
-func main() {
-	// notice how we are able to seamlessly use higher-level libraries
-	err := ioutil.WriteFile("/tmp/hello.txt", []byte("Example 06\n"), 0777)
-	if err != nil {
-		panic(err)
-	}
-
-	f, err := os.Open("/tmp/hello.txt")
-	if err != nil {
-		panic(err)
-	}
-	io.Copy(os.Stdout, f)
-	f.Close()
+type PromCache struct {
+	storage     storage.Storage
+	queryEngine *promql.Engine
+	dir         string
+	context     context.Context
 }
 
-// END OMIT
+func (p *PromCache) Close() {
+	if p.storage != nil {
+		p.storage.Close()
+		os.RemoveAll(p.dir)
+	}
+}
+
+func (p *PromCache) Init() {
+	p.Close()
+	var err error
+	p.dir, err = ioutil.TempDir("", "promCache")
+	if err != nil {
+		js.Debugger()
+	}
+	db, err := tsdb.Open(p.dir, nil, nil, &tsdb.Options{
+		MinBlockDuration: model.Duration(24 * time.Hour),
+		MaxBlockDuration: model.Duration(24 * time.Hour),
+	})
+	if err != nil {
+		js.Debugger()
+	}
+	p.storage = tsdb.Adapter(db, int64(0))
+	p.queryEngine = promql.NewEngine(p.storage, nil)
+	p.context = context.Background()
+}
+
+func main() {
+	p := PromCache{}
+	p.Init()
+
+	metric := labels.FromMap(map[string]string{
+		"__name__": "ohai_js",
+	})
+
+	now := time.Now()
+	samples := promql.Point{T: now.Unix() * 1000, V: 88.8}
+
+	app, err := p.storage.Appender()
+	if err != nil {
+		js.Debugger()
+	}
+	app.Add(metric, samples.T, samples.V)
+	app.Commit()
+
+	query, err := p.queryEngine.NewInstantQuery("ohai", now)
+	if err != nil {
+		js.Debugger()
+	}
+	res := query.Exec(p.context)
+	println("err", res.Err != nil)
+	println("type", res.Value.Type())
+	println("val -->", res.Value.String(), "<--")
+}
