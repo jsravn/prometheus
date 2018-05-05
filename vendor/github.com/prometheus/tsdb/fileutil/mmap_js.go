@@ -11,20 +11,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// +build !windows,!plan9,!js
+// +build js
 
 package fileutil
 
 import (
+	"io/ioutil"
 	"os"
-
-	"golang.org/x/sys/unix"
 )
 
 func mmap(f *os.File, length int) ([]byte, error) {
-	return unix.Mmap(int(f.Fd()), 0, length, unix.PROT_READ, unix.MAP_SHARED)
+	return ioutil.ReadFile(f.Name())
 }
 
 func munmap(b []byte) (err error) {
-	return unix.Munmap(b)
+	return nil
 }
