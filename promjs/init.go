@@ -4,7 +4,6 @@ import (
 	"syscall"
 
 	"github.com/gopherjs/gopherjs/ext"
-	"github.com/gopherjs/gopherjs/js"
 )
 
 var vfs interface {
@@ -37,16 +36,11 @@ func init() {
 	ext.RegisterSyscallHandler(syscall.SYS_WRITE, vfs.Write)
 	ext.RegisterSyscallHandler6(syscall.SYS_GETDIRENTRIES64, vfs.Getdir)
 
-	//	r0, _, e1 := Syscall6(SYS_MMAP, uintptr(addr), uintptr(length), uintptr(prot), uintptr(flag), uintptr(fd), uintptr(pos))
-	//	_, _, e1 := Syscall(SYS_MUNMAP, uintptr(addr), uintptr(length), 0)
-
 	// pid is 2, ppid is 1
 	ext.RegisterSyscallHandler(syscall.SYS_GETPID, func(a1, a2, a3 uintptr) (r1, r2 uintptr, err syscall.Errno) {
-		js.Global.Get("console").Call("debug", "::GETPID", a1, a2, a3)
 		return 2, 0, 0
 	})
 	ext.RegisterSyscallHandler(syscall.SYS_GETPPID, func(a1, a2, a3 uintptr) (r1, r2 uintptr, err syscall.Errno) {
-		js.Global.Get("console").Call("debug", "::GETPPID", a1, a2, a3)
 		return 1, 0, 0
 	})
 

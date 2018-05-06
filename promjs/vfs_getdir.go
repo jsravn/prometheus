@@ -27,8 +27,6 @@ func (vfs *virtualFileSystem) Getdir(a1, a2, a3, a4, a5, a6 uintptr) (r1, r2 uin
 	limit := int(a3) // 4096
 	// a4 is by spec an optional pointer to fd.pos, but in Go this is reset between calls so useless
 
-	js.Global.Get("console").Call("debug", "SYS_GETDIRENTRIES64", fd)
-
 	// print the file system:
 	// for path := range vfs.files {
 	// 	js.Global.Get("console").Call("debug", "  ", path)
