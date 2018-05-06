@@ -8,9 +8,10 @@ import (
 
 	"github.com/gopherjs/gopherjs/js"
 
+	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
+
 	"github.com/prometheus/common/model"
-	"github.com/prometheus/common/promlog"
 	"github.com/prometheus/prometheus/pkg/labels"
 	"github.com/prometheus/prometheus/promql"
 	"github.com/prometheus/prometheus/storage"
@@ -22,6 +23,7 @@ type PromCache struct {
 	queryEngine *promql.Engine
 	dir         string
 	context     context.Context
+	logger      log.Logger
 }
 
 func (p *PromCache) Close() {
@@ -35,16 +37,11 @@ func (p *PromCache) Init() {
 	p.Close()
 	var err error
 
-	loglevel := promlog.AllowedLevel{}
-	loglevel.Set("debug")
-	logger := promlog.New(loglevel)
-	level.Info(logger).Log("msg", "Starting Prometheus")
-
 	p.dir, err = ioutil.TempDir("", "promCache")
 	if err != nil {
 		js.Debugger()
 	}
-	db, err := tsdb.Open(p.dir, nil, nil, &tsdb.Options{
+	db, err := tsdb.Open(p.dir, p.logger, nil, &tsdb.Options{
 		MinBlockDuration: model.Duration(24 * time.Hour),
 		MaxBlockDuration: model.Duration(24 * time.Hour),
 		NoLockfile:       true,
@@ -54,14 +51,25 @@ func (p *PromCache) Init() {
 		js.Debugger()
 	}
 	p.storage = tsdb.Adapter(db, int64(0))
-	p.queryEngine = promql.NewEngine(p.storage, nil)
+
+	p.queryEngine = promql.NewEngine(p.storage, &promql.EngineOptions{
+		MaxConcurrentQueries: 20,
+		Timeout:              2 * time.Minute,
+		Logger:               log.With(p.logger, "component", "query engine"),
+	})
 	p.context = context.Background()
 }
 
 func main() {
 
-	p := PromCache{}
-	println("init:")
+	// can set logger to log.NewNopLogger()
+	logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stderr))
+	logger = level.NewFilter(logger, level.AllowDebug())
+	logger = log.With(logger, "ts", log.DefaultTimestampUTC)
+	level.Info(logger).Log("msg", "Starting Prometheus")
+
+	p := PromCache{logger: logger}
+
 	p.Init()
 
 	metric := labels.FromMap(map[string]string{
@@ -78,17 +86,11 @@ func main() {
 	app.Add(metric, samples.T, samples.V)
 	app.Commit()
 
-	println("query:")
 	query, err := p.queryEngine.NewInstantQuery("ohai_js", now)
 	if err != nil {
 		js.Debugger()
 	}
-	println("query", query)
-	println("query exec:")
 	res := query.Exec(p.context)
-	println("err", res.Err != nil)
-	println("type", res.Value.Type())
-	println("res", res)
-	println("val -->", res.Value.String(), "<--")
+	println("val", res.Value.String())
 	js.Debugger()
 }
