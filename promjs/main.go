@@ -8,7 +8,9 @@ import (
 
 	"github.com/gopherjs/gopherjs/js"
 
+	"github.com/go-kit/kit/log/level"
 	"github.com/prometheus/common/model"
+	"github.com/prometheus/common/promlog"
 	"github.com/prometheus/prometheus/pkg/labels"
 	"github.com/prometheus/prometheus/promql"
 	"github.com/prometheus/prometheus/storage"
@@ -32,6 +34,12 @@ func (p *PromCache) Close() {
 func (p *PromCache) Init() {
 	p.Close()
 	var err error
+
+	loglevel := promlog.AllowedLevel{}
+	loglevel.Set("debug")
+	logger := promlog.New(loglevel)
+	level.Info(logger).Log("msg", "Starting Prometheus")
+
 	p.dir, err = ioutil.TempDir("", "promCache")
 	if err != nil {
 		js.Debugger()
@@ -51,6 +59,7 @@ func (p *PromCache) Init() {
 }
 
 func main() {
+
 	p := PromCache{}
 	println("init:")
 	p.Init()
