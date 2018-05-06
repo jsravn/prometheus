@@ -15,8 +15,6 @@ func (vfs *virtualFileSystem) Write(a1, a2, a3 uintptr) (r1, r2 uintptr, err sys
 	buf := uint8ArrayToBytes(a2)
 	cnt := a3
 
-	js.Global.Get("console").Call("debug", "::WRITE", fd, buf)
-
 	// write to stdout/stdin
 	switch fd {
 	case uintptr(syscall.Stdout), uintptr(syscall.Stderr):

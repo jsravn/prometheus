@@ -3,8 +3,6 @@ package main
 import (
 	"os"
 	"syscall"
-
-	"github.com/gopherjs/gopherjs/js"
 )
 
 // Open a file: http://man7.org/linux/man-pages/man2/open.2.html
@@ -15,8 +13,6 @@ func (vfs *virtualFileSystem) Open(a1, a2, a3 uintptr) (r1, r2 uintptr, err sysc
 	pathname := uint8ArrayToString(a1)
 	flags := int(a2)
 	mode := os.FileMode(a3)
-
-	js.Global.Get("console").Call("debug", "::OPEN", pathname, flags, os.FileMode(mode).String())
 
 	// See if the file exists, if it doesn't, and we passed O_CREATE, create it
 	file, ok := vfs.files[pathname]

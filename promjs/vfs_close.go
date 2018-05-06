@@ -2,8 +2,6 @@ package main
 
 import (
 	"syscall"
-
-	"github.com/gopherjs/gopherjs/js"
 )
 
 // Close a file: http://man7.org/linux/man-pages/man2/close.2.html
@@ -12,8 +10,6 @@ import (
 //
 func (vfs *virtualFileSystem) Close(a1, a2, a3 uintptr) (r1, r2 uintptr, err syscall.Errno) {
 	fd := a1
-
-	js.Global.Get("console").Call("debug", "::CLOSE", fd)
 
 	// See if the file descriptor exists. If it doesn't, return an error
 	_, ok := vfs.fds[fd]

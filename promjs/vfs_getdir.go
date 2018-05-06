@@ -27,18 +27,12 @@ func (vfs *virtualFileSystem) Getdir(a1, a2, a3, a4, a5, a6 uintptr) (r1, r2 uin
 	limit := int(a3) // 4096
 	// a4 is by spec an optional pointer to fd.pos, but in Go this is reset between calls so useless
 
-	js.Global.Get("console").Call("debug", "::GETDIRENTRIES64", fd, dest, limit)
+	js.Global.Get("console").Call("debug", "SYS_GETDIRENTRIES64", fd)
 
 	// print the file system:
 	// for path := range vfs.files {
 	// 	js.Global.Get("console").Call("debug", "  ", path)
 	// }
-
-	// remove
-	vfs.BREAKS++
-	if vfs.BREAKS >= 20 {
-		js.Debugger()
-	}
 
 	ref, ok := vfs.fds[fd]
 	if !ok || ref.file.isDir != 1 {
@@ -55,7 +49,6 @@ func (vfs *virtualFileSystem) Getdir(a1, a2, a3, a4, a5, a6 uintptr) (r1, r2 uin
 	for path, f := range vfs.files {
 		if f == ref.file {
 			prefix = path + "/"
-			js.Global.Get("console").Call("debug", "getdir looking for", prefix)
 			break
 		}
 	}
@@ -65,9 +58,6 @@ func (vfs *virtualFileSystem) Getdir(a1, a2, a3, a4, a5, a6 uintptr) (r1, r2 uin
 	for path := range vfs.files {
 		inode++
 		if strings.HasPrefix(path, prefix) {
-			// found a file
-			js.Global.Get("console").Call("debug", "getdir found", path)
-
 			dirent := syscall.Dirent{}
 
 			filename := filepath.Base(path)
@@ -90,12 +80,11 @@ func (vfs *virtualFileSystem) Getdir(a1, a2, a3, a4, a5, a6 uintptr) (r1, r2 uin
 			dirent.Reclen = uint16(recordLen)
 
 			if length+recordLen > limit {
-				js.Global.Get("console").Call("warn", "getdir too many records", path)
+				js.Global.Get("console").Call("warn", "SYS_GETDIRENTRIES64 too many records", path)
 				return 0, 0, syscall.EFAULT
 			}
 
-			// copy the bytes, there's probably a better way
-			// but the js interop doesn't seem to play well with raw access
+			// copy the bytes into the underlying js array
 			src := bytes.Buffer{}
 			binary.Write(&src, binary.LittleEndian, dirent)
 

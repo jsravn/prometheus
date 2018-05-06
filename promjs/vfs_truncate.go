@@ -2,8 +2,6 @@ package main
 
 import (
 	"syscall"
-
-	"github.com/gopherjs/gopherjs/js"
 )
 
 // "Truncate changes the size of the file.
@@ -12,8 +10,6 @@ import (
 func (vfs *virtualFileSystem) Truncate(a1, a2, a3 uintptr) (r1, r2 uintptr, err syscall.Errno) {
 	fd := a1
 	size := int(a2)
-
-	js.Global.Get("console").Call("debug", "SYS_FTRUNCATE", fd, size)
 
 	ref, ok := vfs.fds[fd]
 	if !ok {
@@ -26,7 +22,7 @@ func (vfs *virtualFileSystem) Truncate(a1, a2, a3 uintptr) (r1, r2 uintptr, err 
 	} else if size > ref.pos {
 		// grow
 
-		// ... here I think we just pretend to fail, or quietly ignore the request
+		// ... here I think we just quietly ignore the request
 
 		// grow := make([]byte, size, size+1)
 		// copy(grow, ref.file.data)
