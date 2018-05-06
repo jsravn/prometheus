@@ -39,6 +39,8 @@ func (p *PromCache) Init() {
 	db, err := tsdb.Open(p.dir, nil, nil, &tsdb.Options{
 		MinBlockDuration: model.Duration(24 * time.Hour),
 		MaxBlockDuration: model.Duration(24 * time.Hour),
+		NoLockfile:       true,
+		WALFlushInterval: 1 * time.Hour,
 	})
 	if err != nil {
 		js.Debugger()
@@ -50,6 +52,7 @@ func (p *PromCache) Init() {
 
 func main() {
 	p := PromCache{}
+	println("init:")
 	p.Init()
 
 	metric := labels.FromMap(map[string]string{
@@ -66,12 +69,17 @@ func main() {
 	app.Add(metric, samples.T, samples.V)
 	app.Commit()
 
-	query, err := p.queryEngine.NewInstantQuery("ohai", now)
+	println("query:")
+	query, err := p.queryEngine.NewInstantQuery("ohai_js", now)
 	if err != nil {
 		js.Debugger()
 	}
+	println("query", query)
+	println("query exec:")
 	res := query.Exec(p.context)
 	println("err", res.Err != nil)
 	println("type", res.Value.Type())
+	println("res", res)
 	println("val -->", res.Value.String(), "<--")
+	js.Debugger()
 }
