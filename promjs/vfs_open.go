@@ -12,7 +12,7 @@ import (
 func (vfs *virtualFileSystem) Open(a1, a2, a3 uintptr) (r1, r2 uintptr, err syscall.Errno) {
 	pathname := uint8ArrayToString(a1)
 	flags := int(a2)
-	mode := os.FileMode(a3)
+	// mode := os.FileMode(a3)
 
 	// See if the file exists, if it doesn't, and we passed O_CREATE, create it
 	file, ok := vfs.files[pathname]
