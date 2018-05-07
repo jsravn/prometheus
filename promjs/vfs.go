@@ -19,7 +19,6 @@ type (
 		files  map[string]*virtualFile
 		fds    map[uintptr]*virtualFileReference
 		nextFD uintptr
-		BREAKS int
 	}
 )
 
