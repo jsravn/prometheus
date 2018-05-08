@@ -51,6 +51,29 @@ type String struct {
 	T int64
 }
 
+func (p *Point) UnmarshalJSON(b []byte) error {
+	// lift array of literals into our struct
+	// eg:  [123.456,"789"]  ->  Point{ T:123456, V:789.0 }
+	// using string for float to handle non-json float values like NaN, 1e-3, etc
+	var s string
+	var f float64
+	m := []interface{}{&f, &s}
+	want := len(m)
+	err := json.Unmarshal(b, &m)
+	if err != nil {
+		return err
+	}
+	p.T = int64(f * 1000.)
+	p.V, err = strconv.ParseFloat(s, 64)
+	if err != nil {
+		return err
+	}
+	if len(m) != want {
+		return fmt.Errorf("wrong number of fields in Point, expecting %d got %d", want, len(m))
+	}
+	return nil
+}
+
 func (s String) String() string {
 	return s.V
 }
