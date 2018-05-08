@@ -10,14 +10,17 @@ async function fetchAsync (url) {
 function demo() {
   let p = promCache.New()
 
-  fetchAsync("http://192.168.99.100:30090/api/v1/query?query=node_cpu_percent%5B1h%5D&time=1525790191.371&_=1525750779036").then(function(d){
+  let hours = 1
+  let end = Date.now() / 1000
+  let start = end - (hours * 60 * 60)
+  let metric = "up" // "node_cpu_percent"
+
+  fetchAsync(`http://192.168.99.100:30090/api/v1/query?query=${metric}%5B${hours}h%5D&time=${end}`).then(function(d){
 
     let millis = performance.now()
 
     p.Load(d.data.result[0])
 
-    let start = 1525786591.628
-    let end = 1525790181.627
 
     // - record: model
     //   expr: node_cpu_percent{monitor_type=""} >= bool 99
@@ -25,10 +28,10 @@ function demo() {
     //     name: node_high_cpu
     //     threshold: 99
 
-    let model = p.RangeQuery("node_cpu_percent{monitor_type=\"\"} >= bool 5", start, end, 10)
+    let model = p.RangeQuery(`${metric}{monitor_type=""} >= bool 5`, start, end, 10)
 
     model[0].metric.__name__ = "model"
-    model[0].metric.name = "node_high_cpu"
+    model[0].metric.name = metric
     model[0].metric.threshold = "5"
 
     p.Load(model[0])
@@ -39,7 +42,7 @@ function demo() {
     //     severity: warning
     //     window: 2m
 
-    let health = p.RangeQuery("(avg_over_time(model{name=\"node_high_cpu\",monitor_type=\"\"}[10m]) >=bool 0.3) * 2", start, end, 10)
+    let health = p.RangeQuery(`(avg_over_time(model{name="${metric}",monitor_type=""}[10m]) >=bool 0.3) * 2`, start, end, 10)
 
     health[0].metric.__name__ = "health"
     health[0].metric.severity = "warning"
