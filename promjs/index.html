@@ -1,0 +1,50 @@
+<html><head><meta charset="utf-8">
+<script src="promjs.js"></script>
+<script>
+async function fetchAsync (url) {
+  let response = await fetch(url);
+  let data = await response.json();
+  return data;
+}
+
+function demo() {
+  let p = promCache.New()
+
+  fetchAsync("http://192.168.99.100:30090/api/v1/query?query=node_cpu_percent%5B1h%5D&time=1525790191.371&_=1525750779036").then(function(d){
+
+    let millis = performance.now()
+
+    p.Load(d.data.result[0])
+
+    let start = 1525786591.628
+    let end = 1525790181.627
+
+    let model = p.RangeQuery("node_cpu_percent{monitor_type=\"\"} >= bool 5", start, end, 10)
+
+    model[0].metric.__name__ = "model"
+    model[0].metric.name = "node_high_cpu"
+    model[0].metric.threshold = "5"
+
+    p.Load(model[0])
+
+    let health = p.RangeQuery("(avg_over_time(model{name=\"node_high_cpu\",monitor_type=\"\"}[10m]) >=bool 0.3) * 2", start, end, 10)
+
+    health[0].metric.__name__ = "health"
+    health[0].metric.severity = "warning"
+    health[0].metric.window = "10m"
+
+    millis = performance.now() - millis
+    console.log(millis, "milliseconds")
+
+    p.Load(health[0])
+
+    console.log(p.InstantQuery("{__name__ =~ \".+\"}", end))
+  })
+
+  return p
+}
+</script>
+</head>
+<body>
+</body>
+</html>
