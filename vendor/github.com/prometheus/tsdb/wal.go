@@ -154,7 +154,7 @@ func newSegmentFile(f *os.File) *segmentFile {
 }
 
 const (
-	walSegmentSizeBytes = 256 * 1024 * 1024 // 256 MB
+	walSegmentSizeBytes = 1 * 1024 * 1024 // 1 MB
 )
 
 // The table gets initialized with sync.Once but may still cause a race
