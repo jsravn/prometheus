@@ -19,6 +19,12 @@ function demo() {
     let start = 1525786591.628
     let end = 1525790181.627
 
+    // - record: model
+    //   expr: node_cpu_percent{monitor_type=""} >= bool 99
+    //   labels:
+    //     name: node_high_cpu
+    //     threshold: 99
+
     let model = p.RangeQuery("node_cpu_percent{monitor_type=\"\"} >= bool 5", start, end, 10)
 
     model[0].metric.__name__ = "model"
@@ -26,6 +32,12 @@ function demo() {
     model[0].metric.threshold = "5"
 
     p.Load(model[0])
+
+    // - record: health
+    //   expr: (avg_over_time(model{name="node_high_cpu",monitor_type=""}[2m]) >=bool 1.0) * 2
+    //   labels:
+    //     severity: warning
+    //     window: 2m
 
     let health = p.RangeQuery("(avg_over_time(model{name=\"node_high_cpu\",monitor_type=\"\"}[10m]) >=bool 0.3) * 2", start, end, 10)
 
