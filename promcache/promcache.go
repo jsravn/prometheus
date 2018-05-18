@@ -1,11 +1,8 @@
 package promcache
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"math"
-	"net/http"
 	"time"
 
 	"github.com/prometheus/prometheus/pkg/labels"
@@ -17,7 +14,6 @@ import (
 type PromCache struct {
 	actor        Actor
 	Server       *PromRunner
-	client       *http.Client
 	err          error
 	start        time.Time
 	end          time.Time
@@ -33,7 +29,6 @@ type PromCache struct {
 func NewPromCache() *PromCache {
 	p := PromCache{
 		Server: NewPromRunner(),
-		client: &http.Client{Timeout: 3 * time.Second},
 	}
 	p.actor.Run()
 	return &p
@@ -55,34 +50,13 @@ func (p *PromCache) LastError() error {
 	return p.err
 }
 
-// SetMetric reads raw data out of a remote prometheus and caches it
-func (p *PromCache) SetMetric(prometheus string, q string) {
+// SetMetrics caches a matrix of promql results
+func (p *PromCache) SetMetrics(metrics []promql.Series) {
 	p.actor.Tell(func() {
-		url := prometheus + "/api/v1/query?query=" + q
-		resp, err := p.client.Get(url)
-		if err != nil {
-			println(err.Error())
-			p.err = err
-			return
-		}
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			println(err.Error())
-			p.err = err
-			return
-		}
-		results := queryResponse{}
-		err = json.Unmarshal(body, &results)
-		if err != nil {
-			println(err.Error())
-			p.err = err
-			return
-		}
-
 		// box everything on oldest and newest values in this result set
 		oldest := int64(math.MaxInt64)
 		newest := int64(math.MinInt64)
-		for _, series := range results.Data.Result {
+		for _, series := range metrics {
 			numPts := len(series.Points)
 			if numPts > 0 {
 				ts := series.Points[0].T
@@ -102,7 +76,7 @@ func (p *PromCache) SetMetric(prometheus string, q string) {
 
 		p.start = time.Unix(oldest, 0)
 		p.end = time.Unix(newest, 0)
-		p.metricCache = results.Data.Result
+		p.metricCache = metrics
 		p.needsRebuild = true
 	})
 }
