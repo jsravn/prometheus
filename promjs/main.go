@@ -2,9 +2,9 @@ package main
 
 import (
 	"encoding/json"
-	"time"
 
 	"github.com/gopherjs/gopherjs/js"
+	"github.com/prometheus/prometheus/promcache"
 	"github.com/prometheus/prometheus/promql"
 )
 
@@ -21,36 +21,28 @@ func main() {
 
 // PromJS is PromCache wrapped as a JS object
 type PromJS struct {
-	goLayer *PromCache
+	goLayer *promcache.PromCache
 }
 
 // New eg:  p = promCache.New()
 func New() *js.Object {
-	return js.MakeWrapper(&PromJS{NewPromCache()})
+	return js.MakeWrapper(&PromJS{promcache.NewPromCache()})
 }
 
-// Close to shut down the prometheus engine, Load and Query will now fail
-func (p *PromJS) Close() {
-	p.goLayer.Close()
+// SetMetric to declare the query for raw metric
+// promServer might be something like "http://192.168.99.100:30090"
+func (p *PromJS) SetMetric(promServer string, q string) {
+	p.goLayer.SetMetric(promServer, q)
 }
 
-// Reset to clear database and start over, ready for Load()
-func (p *PromJS) Reset() {
-	p.goLayer.Reset()
+// SetModel to declare the query for model rules
+func (p *PromJS) SetModel(q string, tags map[string]string) {
+	p.goLayer.SetModel(q, tags)
 }
 
-// Load json in format of a prometheus response:  data.result[0]
-func (p *PromJS) Load(o *js.Object) {
-	str := js.Global.Get("JSON").Call("stringify", o).String()
-	series := promql.Series{}
-	err := json.Unmarshal([]byte(str), &series)
-	if err != nil {
-		js.Global.Get("console").Call("error", "Load json error", err)
-	}
-	err = p.goLayer.Load(series)
-	if err != nil {
-		js.Global.Get("console").Call("error", "Load error", err)
-	}
+// SetHealth to declare the query for health rules
+func (p *PromJS) SetHealth(q string, tags map[string]string) {
+	p.goLayer.SetHealth(q, tags)
 }
 
 func response2json(res promql.Value) *js.Object {
@@ -65,28 +57,20 @@ func response2json(res promql.Value) *js.Object {
 	return js.Global.Get("JSON").Call("parse", s)
 }
 
-// InstantQuery eg: InstantQuery("metric", 1525786621.627)
+// InstantQuery eg: InstantQuery("metric")
 // q is any promql that works in "Console" tab of prometheus
-// time is in unix seconds, we ignore the fractional milliseconds
-func (p *PromJS) InstantQuery(q string, unixTime float64) *js.Object {
-	t := time.Unix(int64(unixTime), 0)
-	res, err := p.goLayer.InstantQuery(q, t)
+func (p *PromJS) InstantQuery(q string) *js.Object {
+	res, err := p.goLayer.InstantQuery(q)
 	if err != nil {
 		js.Global.Get("console").Call("error", "InstantQuery error", err)
 	}
 	return response2json(res)
 }
 
-// RangeQuery eg: RangeQuery("metric", 1525780621.123, 1525786621.627, 10)
+// RangeQuery eg: RangeQuery("metric")
 // q is any promql that works in "Graph" tab of prometheus
-// times are unix seconds, ignoring the fractional milliseconds
-// interval is seconds
-func (p *PromJS) RangeQuery(q string, start, end float64, interval int) *js.Object {
-	res, err := p.goLayer.RangeQuery(
-		q,
-		time.Unix(int64(start), 0),
-		time.Unix(int64(end), 0),
-		time.Duration(interval)*time.Second)
+func (p *PromJS) RangeQuery(q string) *js.Object {
+	res, err := p.goLayer.RangeQuery(q)
 	if err != nil {
 		js.Global.Get("console").Call("error", "RangeQuery error", err)
 	}
