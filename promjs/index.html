@@ -1,6 +1,7 @@
 <html><head><meta charset="utf-8">
 <script src="promjs.js"></script>
 <script>
+
 async function fetchAsync (url) {
   let response = await fetch(url);
   let data = await response.json();
@@ -10,50 +11,28 @@ async function fetchAsync (url) {
 function demo() {
   let p = promCache.New()
 
+  let prometheus = "http://192.168.99.100:30090"
+  let metric = "scrape_duration_seconds"
   let hours = 1
-  let end = Date.now() / 1000
-  let start = end - (hours * 60 * 60)
-  let metric = "up" // "node_cpu_percent"
 
-  fetchAsync(`http://192.168.99.100:30090/api/v1/query?query=${metric}%5B${hours}h%5D&time=${end}`).then(function(d){
-
+  fetchAsync(`${prometheus}/api/v1/query?query=${metric}[${hours}h]`).then(function(d){
+    p.SetMetrics(d.data.result)
+    p.SetModel(`${metric}{monitor_type=""} >= bool 0.1`, {
+      "__name__":  "model",
+      "name":      metric,
+      "threshold": "0.1",
+    })
+    p.SetHealth(`(avg_over_time(model{name="${metric}",monitor_type=""}[10m]) >=bool 0.3) * 2`, {
+      "__name__": "health",
+      "severity": "warning",
+      "window":   "10m",
+    })
     let millis = performance.now()
-
-    p.Load(d.data.result[0])
-
-
-    // - record: model
-    //   expr: node_cpu_percent{monitor_type=""} >= bool 99
-    //   labels:
-    //     name: node_high_cpu
-    //     threshold: 99
-
-    let model = p.RangeQuery(`${metric}{monitor_type=""} >= bool 5`, start, end, 10)
-
-    model[0].metric.__name__ = "model"
-    model[0].metric.name = metric
-    model[0].metric.threshold = "5"
-
-    p.Load(model[0])
-
-    // - record: health
-    //   expr: (avg_over_time(model{name="node_high_cpu",monitor_type=""}[2m]) >=bool 1.0) * 2
-    //   labels:
-    //     severity: warning
-    //     window: 2m
-
-    let health = p.RangeQuery(`(avg_over_time(model{name="${metric}",monitor_type=""}[10m]) >=bool 0.3) * 2`, start, end, 10)
-
-    health[0].metric.__name__ = "health"
-    health[0].metric.severity = "warning"
-    health[0].metric.window = "10m"
-
+    let res = p.InstantQuery("{__name__=~\".+\"}")
     millis = performance.now() - millis
-    console.log(millis, "milliseconds")
 
-    p.Load(health[0])
-
-    console.log(p.InstantQuery("{__name__ =~ \".+\"}", end))
+    console.log("millis", millis)
+    console.log("result", res)
   })
 
   return p

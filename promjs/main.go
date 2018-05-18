@@ -29,10 +29,15 @@ func New() *js.Object {
 	return js.MakeWrapper(&PromJS{promcache.NewPromCache()})
 }
 
-// SetMetric to declare the query for raw metric
-// promServer might be something like "http://192.168.99.100:30090"
-func (p *PromJS) SetMetric(promServer string, q string) {
-	p.goLayer.SetMetric(promServer, q)
+// SetMetrics to pass in a promql matrix
+func (p *PromJS) SetMetrics(o *js.Object) {
+	str := js.Global.Get("JSON").Call("stringify", o).String()
+	series := []promql.Series{}
+	err := json.Unmarshal([]byte(str), &series)
+	if err != nil {
+		js.Global.Get("console").Call("error", "Load json error", err)
+	}
+	p.goLayer.SetMetrics(series)
 }
 
 // SetModel to declare the query for model rules
