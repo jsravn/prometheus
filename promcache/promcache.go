@@ -9,6 +9,9 @@ import (
 	"github.com/prometheus/prometheus/promql"
 )
 
+// maximum number of points returned in a query
+const maxResolution = 300.
+
 // PromCache is an actor that keeps a temp Prometheus server
 // and some caching for quick metric -> model -> health transforms
 type PromCache struct {
@@ -17,6 +20,7 @@ type PromCache struct {
 	err          error
 	start        time.Time
 	end          time.Time
+	bucket       time.Duration
 	needsRebuild bool
 	metricCache  []promql.Series
 	modelQuery   string
@@ -29,6 +33,7 @@ type PromCache struct {
 func NewPromCache() *PromCache {
 	p := PromCache{
 		Server: NewPromRunner(),
+		bucket: time.Minute,
 	}
 	p.actor.Run()
 	return &p
@@ -76,6 +81,9 @@ func (p *PromCache) SetMetrics(metrics []promql.Series) {
 
 		p.start = time.Unix(oldest, 0)
 		p.end = time.Unix(newest, 0)
+		minutes := float64(newest-oldest) / 60.
+		minutes = math.Ceil(minutes / maxResolution)
+		p.bucket = time.Duration(minutes) * time.Minute
 		p.metricCache = metrics
 		p.needsRebuild = true
 	})
@@ -111,7 +119,7 @@ func (p *PromCache) rebuild() {
 }
 
 func (p *PromCache) eval(q string, tags map[string]string) {
-	res, err := p.Server.RangeQuery(q, p.start, p.end, time.Second*60)
+	res, err := p.Server.RangeQuery(q, p.start, p.end, p.bucket)
 	if err != nil {
 		println(q + ": " + err.Error())
 		p.err = err
@@ -151,7 +159,7 @@ func (p *PromCache) InstantQuery(q string) (res promql.Value, err error) {
 func (p *PromCache) RangeQuery(q string) (res promql.Value, err error) {
 	p.actor.Ask(func() {
 		p.rebuild()
-		res, err = p.Server.RangeQuery(q, p.start, p.end, time.Minute)
+		res, err = p.Server.RangeQuery(q, p.start, p.end, p.bucket)
 	})
 	return res, err
 }

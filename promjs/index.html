@@ -8,12 +8,14 @@ async function fetchAsync (url) {
   return data;
 }
 
-function demo() {
+function demo(hours) {
   let p = promCache.New()
 
   let prometheus = "http://192.168.99.100:30090"
   let metric = "scrape_duration_seconds"
-  let hours = 1
+  if ("undefined" == typeof(hours)) {
+    hours = 1
+  }
 
   fetchAsync(`${prometheus}/api/v1/query?query=${metric}[${hours}h]`).then(function(d){
     p.SetMetrics(d.data.result)
