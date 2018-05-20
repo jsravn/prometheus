@@ -1,7 +1,7 @@
 package promcache
 
 import (
-	"fmt"
+	"errors"
 	"math"
 	"time"
 
@@ -83,7 +83,6 @@ func (p *PromCache) SetMetrics(metrics []promql.Series) {
 
 func (p *PromCache) SetModel(q string, tags map[string]string) {
 	p.actor.Tell(func() {
-		println(q)
 		p.modelQuery = q
 		p.modelLabels = tags
 		p.needsRebuild = true
@@ -92,7 +91,6 @@ func (p *PromCache) SetModel(q string, tags map[string]string) {
 
 func (p *PromCache) SetHealth(q string, tags map[string]string) {
 	p.actor.Tell(func() {
-		println(q)
 		p.healthQuery = q
 		p.healthLabels = tags
 		p.needsRebuild = true
@@ -113,7 +111,7 @@ func (p *PromCache) rebuild() {
 }
 
 func (p *PromCache) eval(q string, tags map[string]string) {
-	res, err := p.Server.RangeQuery(q, p.start, p.end, time.Second*10)
+	res, err := p.Server.RangeQuery(q, p.start, p.end, time.Second*60)
 	if err != nil {
 		println(q + ": " + err.Error())
 		p.err = err
@@ -121,7 +119,7 @@ func (p *PromCache) eval(q string, tags map[string]string) {
 	}
 	matrix, ok := res.(promql.Matrix)
 	if !ok {
-		p.err = fmt.Errorf("query result is not a range Vector")
+		p.err = errors.New("query result is not a range Vector")
 		println(p.err.Error())
 		return
 	}
