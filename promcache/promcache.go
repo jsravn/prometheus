@@ -163,3 +163,35 @@ func (p *PromCache) RangeQuery(q string) (res promql.Value, err error) {
 	})
 	return res, err
 }
+
+func (p *PromCache) FramedRangeQuery(q string, start, end, step int) (res promql.Value, err error) {
+	p.actor.Ask(func() {
+		p.rebuild()
+
+		// clip to data range, to prevent lookups out of range
+		dataStart := int(p.start.Unix())
+		dataEnd := int(p.end.Unix())
+		if start < dataStart {
+			start = dataStart
+		}
+		if end < dataStart {
+			end = dataStart
+		}
+		if start > dataEnd {
+			start = dataEnd
+		}
+		if end > dataEnd {
+			end = dataEnd
+		}
+
+		// align start on "step" to prevent jitter on small changes to start
+		start = (start / step) * step
+
+		res, err = p.Server.RangeQuery(
+			q,
+			time.Unix(int64(start), 0),
+			time.Unix(int64(end), 0),
+			time.Duration(step)*time.Second)
+	})
+	return res, err
+}

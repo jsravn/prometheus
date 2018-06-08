@@ -9,8 +9,11 @@ import (
 )
 
 /*
-	this is the js -> go interop layer, where inputs and outputs are js.Object
-	and we do silly things like js.Object -> json string -> json.Unmarshall to convert js to go
+	this is the js <--> go interop layer, where inputs and outputs are js.Object
+	and we do browser-esque things like
+		js.Object -> json string -> json.Unmarshall to convert js to go
+		errors are logged to console
+		results are JSON.parse()'d objects
 */
 
 func main() {
@@ -79,5 +82,22 @@ func (p *PromJS) RangeQuery(q string) *js.Object {
 	if err != nil {
 		js.Global.Get("console").Call("error", "RangeQuery error", err)
 	}
+	return response2json(res)
+}
+
+// FramedRangeQuery is RangeQuery plus start, end, step framing like the http api
+// q is any promql that works in "Graph" tab of prometheus
+// start, end are ints with unix timestamps: seconds since 1970
+// step is seconds per bucket
+func (p *PromJS) FramedRangeQuery(q string, start, end, step int) *js.Object {
+	if start%step != 0 {
+		js.Global.Get("console").Call("warn", "jittery RangeQuery:", q, "start:", start, "is misaligned with step:", step)
+	}
+
+	res, err := p.goLayer.FramedRangeQuery(q, start, end, step)
+	if err != nil {
+		js.Global.Get("console").Call("error", "RangeQuery error", err)
+	}
+
 	return response2json(res)
 }
