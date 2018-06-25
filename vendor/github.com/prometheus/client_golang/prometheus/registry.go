@@ -17,7 +17,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"os"
 	"runtime"
 	"sort"
 	"sync"
@@ -50,10 +49,10 @@ var (
 	DefaultGatherer   Gatherer   = defaultRegistry
 )
 
-func init() {
-	MustRegister(NewProcessCollector(os.Getpid(), ""))
-	MustRegister(NewGoCollector())
-}
+// func init() {
+// 	MustRegister(NewProcessCollector(os.Getpid(), ""))
+// 	MustRegister(NewGoCollector())
+// }
 
 // NewRegistry creates a new vanilla Registry without any Collectors
 // pre-registered.
