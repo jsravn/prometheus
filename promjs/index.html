@@ -24,16 +24,43 @@ function demo(hours) {
 
   fetchAsync(`${prometheus}/api/v1/query?query=${metric}[${hours}h]`).then(function(d){
     p.SetMetrics(d.data.result)
-    p.SetModel(`${metric}{monitor_type=""} >= bool 0.1`, {
-      "__name__":  "model",
-      "name":      metric,
-      "threshold": "0.1",
-    })
-    p.SetHealth(`(avg_over_time(model{name="${metric}",monitor_type=""}[10m]) >=bool 0.3) * 2`, {
-      "__name__": "health",
-      "severity": "warning",
-      "window":   "10m",
-    })
+
+    // warning "mode" with different threshold, severity, and confidence parameters:
+    p.SetModel(
+      `${metric}{monitor_type=""} >= bool 0.1`,
+      {
+        "__name__":  "model",
+        "name":      metric,
+        "threshold": "0.1",
+      },
+      "warning")
+    p.SetHealth(
+      `(avg_over_time(model{name="${metric}",monitor_type="",threshold="0.1"}[10m]) >=bool 0.3) * 2`,
+      {
+        "__name__": "health",
+        "severity": "warning",
+        "window":   "10m",
+      },
+      "warning")
+
+    // critical "mode" with different threshold, severity, and confidence parameters:
+    p.SetModel(
+      `${metric}{monitor_type=""} >= bool 0.1`,
+      {
+        "__name__":  "model",
+        "name":      metric,
+        "threshold": "0.5",
+      },
+      "critical")
+    p.SetHealth(
+      `(avg_over_time(model{name="${metric}",monitor_type="",threshold="0.5"}[10m]) >=bool 1) * 4`,
+      {
+        "__name__": "health",
+        "severity": "critical",
+        "window":   "10m",
+      },
+      "critical")
+
     let millis = performance.now()
     let res = p.InstantQuery("{__name__=~\".+\"}")
     millis = performance.now() - millis
