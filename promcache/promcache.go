@@ -12,6 +12,8 @@ import (
 // maximum number of points returned in a query
 const maxResolution = 300.
 
+type keyValues map[string]string
+
 // PromCache is an actor that keeps a temp Prometheus server
 // and some caching for quick metric -> model -> health transforms
 type PromCache struct {
@@ -23,17 +25,21 @@ type PromCache struct {
 	bucket       time.Duration
 	needsRebuild bool
 	metricCache  []promql.Series
-	modelQuery   string
-	modelLabels  map[string]string
-	healthQuery  string
-	healthLabels map[string]string
+	modelQuery   map[string]string
+	modelLabels  map[string]keyValues
+	healthQuery  map[string]string
+	healthLabels map[string]keyValues
 }
 
 // NewPromCache initializes the prometheus backend and starts the actor
 func NewPromCache() *PromCache {
 	p := PromCache{
-		Server: NewPromRunner(),
-		bucket: time.Minute,
+		Server:       NewPromRunner(),
+		bucket:       time.Minute,
+		modelQuery:   make(map[string]string),
+		modelLabels:  make(map[string]keyValues),
+		healthQuery:  make(map[string]string),
+		healthLabels: make(map[string]keyValues),
 	}
 	p.actor.Run()
 	return &p
@@ -89,18 +95,18 @@ func (p *PromCache) SetMetrics(metrics []promql.Series) {
 	})
 }
 
-func (p *PromCache) SetModel(q string, tags map[string]string) {
+func (p *PromCache) SetModel(q string, tags map[string]string, mode string) {
 	p.actor.Tell(func() {
-		p.modelQuery = q
-		p.modelLabels = tags
+		p.modelQuery[mode] = q
+		p.modelLabels[mode] = tags
 		p.needsRebuild = true
 	})
 }
 
-func (p *PromCache) SetHealth(q string, tags map[string]string) {
+func (p *PromCache) SetHealth(q string, tags map[string]string, mode string) {
 	p.actor.Tell(func() {
-		p.healthQuery = q
-		p.healthLabels = tags
+		p.healthQuery[mode] = q
+		p.healthLabels[mode] = tags
 		p.needsRebuild = true
 	})
 }
@@ -113,8 +119,12 @@ func (p *PromCache) rebuild() {
 	for _, series := range p.metricCache {
 		p.Server.Load(series)
 	}
-	p.eval(p.modelQuery, p.modelLabels)
-	p.eval(p.healthQuery, p.healthLabels)
+	for mode := range p.modelQuery {
+		p.eval(p.modelQuery[mode], p.modelLabels[mode])
+	}
+	for mode := range p.healthQuery {
+		p.eval(p.healthQuery[mode], p.healthLabels[mode])
+	}
 	p.needsRebuild = false
 }
 

@@ -44,13 +44,19 @@ func (p *PromJS) SetMetrics(o *js.Object) {
 }
 
 // SetModel to declare the query for model rules
-func (p *PromJS) SetModel(q string, tags map[string]string) {
-	p.goLayer.SetModel(q, tags)
+func (p *PromJS) SetModel(q string, tags map[string]string, mode string) {
+	if mode == "" {
+		mode = "main"
+	}
+	p.goLayer.SetModel(q, tags, mode)
 }
 
 // SetHealth to declare the query for health rules
-func (p *PromJS) SetHealth(q string, tags map[string]string) {
-	p.goLayer.SetHealth(q, tags)
+func (p *PromJS) SetHealth(q string, tags map[string]string, mode string) {
+	if mode == "" {
+		mode = "main"
+	}
+	p.goLayer.SetHealth(q, tags, mode)
 }
 
 func response2json(res promql.Value) *js.Object {
