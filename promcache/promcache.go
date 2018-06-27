@@ -176,6 +176,7 @@ func (p *PromCache) RangeQuery(q string) (res promql.Value, err error) {
 
 func (p *PromCache) FramedRangeQuery(q string, start, end, step int) (res promql.Value, err error) {
 	p.actor.Ask(func() {
+		p.bucket = time.Duration(step) * time.Second
 		p.rebuild()
 
 		// clip to data range, to prevent lookups out of range
