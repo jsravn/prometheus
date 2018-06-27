@@ -40,7 +40,7 @@ func New() *js.Object {
 func (p *PromJS) SetMetrics(o *js.Object) {
 	str := js.Global.Get("JSON").Call("stringify", o).String()
 	series := []promql.Series{}
-	err := json.Unmarshal([]byte(str), &series)
+	err := json.Unmarshal([]byte(str), &series) // slow
 	if err != nil {
 		js.Global.Get("console").Call("error", "Load json error", err)
 	}

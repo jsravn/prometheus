@@ -20,6 +20,8 @@ type PromCache struct {
 	actor        Actor
 	Server       *PromRunner
 	err          error
+	dataStart    int
+	dataEnd      int
 	start        time.Time
 	end          time.Time
 	bucket       time.Duration
@@ -85,6 +87,8 @@ func (p *PromCache) SetMetrics(metrics []promql.Series) {
 		oldest = (oldest / 60) * 60 // normalize to 60 sec buckets
 		newest++                    // expand to include last data point
 
+		p.dataStart = int(oldest)
+		p.dataEnd = int(newest)
 		p.start = time.Unix(oldest, 0)
 		p.end = time.Unix(newest, 0)
 		minutes := float64(newest-oldest) / 60.
@@ -176,33 +180,40 @@ func (p *PromCache) RangeQuery(q string) (res promql.Value, err error) {
 
 func (p *PromCache) FramedRangeQuery(q string, start, end, step int) (res promql.Value, err error) {
 	p.actor.Ask(func() {
-		p.bucket = time.Duration(step) * time.Second
-		p.rebuild()
-
 		// clip to data range, to prevent lookups out of range
-		dataStart := int(p.start.Unix())
-		dataEnd := int(p.end.Unix())
-		if start < dataStart {
-			start = dataStart
+		if start < p.dataStart {
+			start = p.dataStart
 		}
-		if end < dataStart {
-			end = dataStart
+		if end < p.dataStart {
+			end = p.dataStart
 		}
-		if start > dataEnd {
-			start = dataEnd
+		if start > p.dataEnd {
+			start = p.dataEnd
 		}
-		if end > dataEnd {
-			end = dataEnd
+		if end > p.dataEnd {
+			end = p.dataEnd
 		}
 
 		// align start on "step" to prevent jitter on small changes to start
 		start = (start / step) * step
 
-		res, err = p.Server.RangeQuery(
-			q,
-			time.Unix(int64(start), 0),
-			time.Unix(int64(end), 0),
-			time.Duration(step)*time.Second)
+		// align internal views to this frame
+		startTime := time.Unix(int64(start), 0)
+		endTime := time.Unix(int64(end), 0)
+		basis := time.Duration(step) * time.Second
+		if p.start != startTime {
+			p.start = startTime
+		}
+		if p.end != endTime {
+			p.end = endTime
+		}
+		if p.bucket != basis {
+			p.bucket = basis
+			p.needsRebuild = true
+		}
+
+		p.rebuild()
+		res, err = p.Server.RangeQuery(q, p.start, p.end, p.bucket)
 	})
 	return res, err
 }
