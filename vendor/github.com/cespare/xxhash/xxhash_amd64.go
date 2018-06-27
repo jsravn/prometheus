@@ -1,6 +1,7 @@
 // +build !appengine
 // +build gc
 // +build !noasm
+// +build !js
 
 package xxhash
 

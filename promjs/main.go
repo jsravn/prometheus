@@ -2,8 +2,12 @@ package main
 
 import (
 	"encoding/json"
+	"strconv"
+
+	"github.com/cespare/xxhash"
 
 	"github.com/gopherjs/gopherjs/js"
+	"github.com/prometheus/prometheus/pkg/labels"
 	"github.com/prometheus/prometheus/promcache"
 	"github.com/prometheus/prometheus/promql"
 )
@@ -106,4 +110,35 @@ func (p *PromJS) FramedRangeQuery(q string, start, end, step int) *js.Object {
 	}
 
 	return response2json(res)
+}
+
+func (p *PromJS) Hash(m map[string]string) {
+
+	if len(m) == 0 {
+		m = map[string]string{
+			"__name__":  "model",
+			"name":      "ohai",
+			"threshold": "0.1",
+		}
+	}
+
+	ls := labels.FromMap(m)
+
+	const sep = '\xff'
+	b := make([]byte, 0, 1024)
+
+	for _, v := range ls {
+		b = append(b, v.Name...)
+		b = append(b, sep)
+		b = append(b, v.Value...)
+		b = append(b, sep)
+	}
+	hash := js.Global.Get("XXH").Call("h64", string(b), 0)
+	h64 := uint64(hash.Get("_a00").Uint64() +
+		hash.Get("_a16").Uint64()<<16 +
+		hash.Get("_a32").Uint64()<<32 +
+		hash.Get("_a48").Uint64()<<48)
+
+	nativeH := xxhash.Sum64(b)
+	js.Global.Get("console").Call("log", hash.Call("toString", 16), strconv.FormatUint(h64, 16), strconv.FormatUint(nativeH, 16))
 }

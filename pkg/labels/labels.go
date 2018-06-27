@@ -81,6 +81,8 @@ func (ls *Labels) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// var hashCache map[string]uint64
+
 // Hash returns a hash value for the label set.
 func (ls Labels) Hash() uint64 {
 	b := make([]byte, 0, 1024)
@@ -91,6 +93,18 @@ func (ls Labels) Hash() uint64 {
 		b = append(b, v.Value...)
 		b = append(b, sep)
 	}
+
+	// key := string(b)
+	// if h, ok := hashCache[key]; ok {
+	// 	return h
+	// }
+	// h := xxhash.Sum64([]byte(key))
+	// if len(hashCache) == 0 {
+	// 	hashCache = map[string]uint64{}
+	// }
+	// hashCache[key] = h
+	// return h
+
 	return xxhash.Sum64(b)
 }
 
@@ -110,6 +124,16 @@ func (ls Labels) Get(name string) string {
 		}
 	}
 	return ""
+}
+
+// Has returns true if the label with the given name is present.
+func (ls Labels) Has(name string) bool {
+	for _, l := range ls {
+		if l.Name == name {
+			return true
+		}
+	}
+	return false
 }
 
 // Equal returns whether the two label sets are equal.

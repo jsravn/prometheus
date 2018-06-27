@@ -57,11 +57,12 @@ func (p *PromRunner) init() error {
 	}
 	p.storage = tsdb.Adapter(db, int64(0))
 
-	p.queryEngine = promql.NewEngine(p.storage, &promql.EngineOptions{
-		MaxConcurrentQueries: 20,
-		Timeout:              2 * time.Minute,
-		Logger:               log.With(p.logger, "component", "query engine"),
-	})
+	p.queryEngine = promql.NewEngine(
+		log.With(p.logger, "component", "query engine"),
+		nil,
+		20,
+		2*time.Minute,
+	)
 	p.context = context.Background()
 
 	p.appender, err = p.storage.Appender()
@@ -117,7 +118,7 @@ func (p *PromRunner) InstantQuery(q string, t time.Time) (promql.Value, error) {
 		p.appender.Commit()
 	}
 
-	query, err := p.queryEngine.NewInstantQuery(q, t)
+	query, err := p.queryEngine.NewInstantQuery(p.storage, q, t)
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +134,7 @@ func (p *PromRunner) RangeQuery(q string, start, end time.Time, interval time.Du
 		p.appender.Commit()
 	}
 
-	query, err := p.queryEngine.NewRangeQuery(q, start, end, interval)
+	query, err := p.queryEngine.NewRangeQuery(p.storage, q, start, end, interval)
 	if err != nil {
 		return nil, err
 	}

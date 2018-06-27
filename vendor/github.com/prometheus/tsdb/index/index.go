@@ -144,7 +144,11 @@ func NewWriter(fn string) (*Writer, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer df.Close() // close for flatform windows
+	defer df.Close() // Close for platform windows.
+
+	if err := os.RemoveAll(fn); err != nil {
+		return nil, errors.Wrap(err, "remove any existing index at path")
+	}
 
 	f, err := os.OpenFile(fn, os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
@@ -535,8 +539,8 @@ type Reader struct {
 	c io.Closer
 
 	// Cached hashmaps of section offsets.
-	labels   map[string]uint32
-	postings map[labels.Label]uint32
+	labels   map[string]uint64
+	postings map[labels.Label]uint64
 	// Cache of read symbols. Strings that are returned when reading from the
 	// block are always backed by true strings held in here rather than
 	// strings that are backed by byte slices from the mmap'd index file. This
@@ -597,8 +601,8 @@ func newReader(b ByteSlice, c io.Closer) (*Reader, error) {
 		b:        b,
 		c:        c,
 		symbols:  map[uint32]string{},
-		labels:   map[string]uint32{},
-		postings: map[labels.Label]uint32{},
+		labels:   map[string]uint64{},
+		postings: map[labels.Label]uint64{},
 		crc32:    newCRC32(),
 	}
 
@@ -623,7 +627,7 @@ func newReader(b ByteSlice, c io.Closer) (*Reader, error) {
 	}
 	var err error
 
-	err = r.readOffsetTable(r.toc.labelIndicesTable, func(key []string, off uint32) error {
+	err = r.readOffsetTable(r.toc.labelIndicesTable, func(key []string, off uint64) error {
 		if len(key) != 1 {
 			return errors.Errorf("unexpected key length %d", len(key))
 		}
@@ -633,7 +637,7 @@ func newReader(b ByteSlice, c io.Closer) (*Reader, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "read label index table")
 	}
-	err = r.readOffsetTable(r.toc.postingsTable, func(key []string, off uint32) error {
+	err = r.readOffsetTable(r.toc.postingsTable, func(key []string, off uint64) error {
 		if len(key) != 2 {
 			return errors.Errorf("unexpected key length %d", len(key))
 		}
@@ -647,6 +651,11 @@ func newReader(b ByteSlice, c io.Closer) (*Reader, error) {
 	r.dec = &Decoder{symbols: r.symbols}
 
 	return r, nil
+}
+
+// Version returns the file format version of the underlying index.
+func (r *Reader) Version() int {
+	return r.version
 }
 
 // Range marks a byte range.
@@ -771,7 +780,7 @@ func (r *Reader) readSymbols(off int) error {
 
 	for d.err() == nil && d.len() > 0 && cnt > 0 {
 		s := d.uvarintStr()
-		r.symbols[uint32(nextPos)] = s
+		r.symbols[nextPos] = s
 
 		if r.version == 2 {
 			nextPos++
@@ -786,18 +795,18 @@ func (r *Reader) readSymbols(off int) error {
 // readOffsetTable reads an offset table at the given position calls f for each
 // found entry.f
 // If f returns an error it stops decoding and returns the received error,
-func (r *Reader) readOffsetTable(off uint64, f func([]string, uint32) error) error {
+func (r *Reader) readOffsetTable(off uint64, f func([]string, uint64) error) error {
 	d := r.decbufAt(int(off))
 	cnt := d.be32()
 
 	for d.err() == nil && d.len() > 0 && cnt > 0 {
-		keyCount := int(d.uvarint())
+		keyCount := d.uvarint()
 		keys := make([]string, 0, keyCount)
 
 		for i := 0; i < keyCount; i++ {
 			keys = append(keys, d.uvarintStr())
 		}
-		o := uint32(d.uvarint())
+		o := d.uvarint64()
 		if d.err() != nil {
 			break
 		}
@@ -1029,7 +1038,7 @@ func (dec *Decoder) Series(b []byte, lbls *labels.Labels, chks *[]chunks.Meta) e
 
 	d := decbuf{b: b}
 
-	k := int(d.uvarint())
+	k := d.uvarint()
 
 	for i := 0; i < k; i++ {
 		lno := uint32(d.uvarint())
@@ -1052,7 +1061,7 @@ func (dec *Decoder) Series(b []byte, lbls *labels.Labels, chks *[]chunks.Meta) e
 	}
 
 	// Read the chunks meta data.
-	k = int(d.uvarint())
+	k = d.uvarint()
 
 	if k == 0 {
 		return nil

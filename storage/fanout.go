@@ -216,10 +216,10 @@ func NewMergeQuerier(queriers []Querier) Querier {
 }
 
 // Select returns a set of series that matches the given label matchers.
-func (q *mergeQuerier) Select(matchers ...*labels.Matcher) (SeriesSet, error) {
+func (q *mergeQuerier) Select(params *SelectParams, matchers ...*labels.Matcher) (SeriesSet, error) {
 	seriesSets := make([]SeriesSet, 0, len(q.queriers))
 	for _, querier := range q.queriers {
-		set, err := querier.Select(matchers...)
+		set, err := querier.Select(params, matchers...)
 		if err != nil {
 			return nil, err
 		}
@@ -432,7 +432,6 @@ func (c *mergeIterator) At() (t int64, v float64) {
 		panic("mergeIterator.At() called after .Next() returned false.")
 	}
 
-	// TODO do I need to dedupe or just merge?
 	return c.h[0].At()
 }
 
@@ -443,6 +442,7 @@ func (c *mergeIterator) Next() bool {
 				heap.Push(&c.h, iter)
 			}
 		}
+
 		return len(c.h) > 0
 	}
 
@@ -450,9 +450,17 @@ func (c *mergeIterator) Next() bool {
 		return false
 	}
 
-	iter := heap.Pop(&c.h).(SeriesIterator)
-	if iter.Next() {
-		heap.Push(&c.h, iter)
+	currt, _ := c.At()
+	for len(c.h) > 0 {
+		nextt, _ := c.h[0].At()
+		if nextt != currt {
+			break
+		}
+
+		iter := heap.Pop(&c.h).(SeriesIterator)
+		if iter.Next() {
+			heap.Push(&c.h, iter)
+		}
 	}
 
 	return len(c.h) > 0

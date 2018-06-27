@@ -23,6 +23,8 @@ function demo(hours) {
   }
 
   fetchAsync(`${prometheus}/api/v1/query?query=${metric}[${hours}h]`).then(function(d){
+    let start = performance.now()
+
     p.SetMetrics(d.data.result)
 
     // warning "mode" with different threshold, severity, and confidence parameters:
@@ -61,11 +63,11 @@ function demo(hours) {
       },
       "critical")
 
-    let millis = performance.now()
+    let setup = Math.round(performance.now() - start)
     let res = p.InstantQuery("{__name__=~\".+\"}")
-    millis = performance.now() - millis
+    let total = Math.round(performance.now() - start)
 
-    console.log("millis", millis)
+    console.log("millis:", total, "(", "setup:", setup, "instant query:", total-setup, ")" )
     console.log("result", res)
   })
 
