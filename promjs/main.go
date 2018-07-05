@@ -39,8 +39,16 @@ func New() *js.Object {
 // SetMetrics to pass in a promql matrix
 func (p *PromJS) SetMetrics(o *js.Object) {
 	str := js.Global.Get("JSON").Call("stringify", o).String()
+	p.SetMetricsAsString(str)
+}
+
+func (p *PromJS) SetMetricsAsString(rawJson string) {
+	p.SetMetricsAsByteArray([]byte(rawJson))
+}
+
+func (p *PromJS) SetMetricsAsByteArray(rawJson []byte) {
 	series := []promql.Series{}
-	err := json.Unmarshal([]byte(str), &series) // slow
+	err := json.Unmarshal(rawJson, &series) // slow
 	if err != nil {
 		js.Global.Get("console").Call("error", "Load json error", err)
 	}
