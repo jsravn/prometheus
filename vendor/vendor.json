@@ -548,6 +548,18 @@
 			"revisionTime": "2017-06-07T03:48:29Z"
 		},
 		{
+			"checksumSHA1": "dZXM6H/qlYamNJsbaWMjrVRjmQU=",
+			"path": "github.com/gopherjs/gopherjs/ext",
+			"revision": "3928b9b7f382e0f32d6db4394175580104ab7bca",
+			"revisionTime": "2018-02-24T20:44:32Z"
+		},
+		{
+			"checksumSHA1": "yIkYzW7bzAD81zHyuCNmEj4+oxQ=",
+			"path": "github.com/gopherjs/gopherjs/js",
+			"revision": "3928b9b7f382e0f32d6db4394175580104ab7bca",
+			"revisionTime": "2018-02-24T20:44:32Z"
+		},
+		{
 			"checksumSHA1": "DCgYY4AJZ2rJV2XpZ/Y00CDl+Jo=",
 			"path": "github.com/grpc-ecosystem/grpc-gateway/runtime",
 			"revision": "e4b8a938efae14de11fd97311e873e989896348c",
